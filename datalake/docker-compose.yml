@@ -1,0 +1,103 @@
+services:
+  # 1. MinIO
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    ports: ["9000:9000", "9001:9001"]
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio-data:/data
+    command: server /data --console-address ":9001"
+    networks: [datalake-network]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+
+  # 2. Nessie
+  nessie:
+    image: projectnessie/nessie:latest
+    container_name: nessie
+    ports: ["19120:19120"]
+    networks: [datalake-network]
+    depends_on:
+      minio: { condition: service_healthy }
+
+  # 3. Kudu Master
+  kudu-master:
+    image: apache/kudu:latest
+    container_name: kudu-master
+    user: root
+    ports: ["8050:8050", "7050:7050"]
+    volumes:
+      - kudu-master-data:/var/lib/kudu/master
+    command: ["master"]
+    environment:
+      MASTER_ARGS: >-
+        --unlock_unsafe_flags
+        --use_hybrid_clock=false
+        --fs_wal_dir=/var/lib/kudu/master
+        --rpc_bind_addresses=0.0.0.0:7050
+        --rpc_advertised_addresses=kudu-master:7050
+    networks: [datalake-network]
+
+  # 4. Kudu Tablet Server
+  kudu-tserver:
+    image: apache/kudu:latest
+    container_name: kudu-tserver
+    user: root
+    ports: ["8051:8051", "7051:7051"]
+    volumes:
+      - kudu-tserver-data:/var/lib/kudu/tserver
+    command: ["tserver"]
+    environment:
+      TSERVER_ARGS: >-
+        --unlock_unsafe_flags
+        --use_hybrid_clock=false
+        --tserver_master_addrs=kudu-master:7050
+        --fs_wal_dir=/var/lib/kudu/tserver
+        --rpc_bind_addresses=0.0.0.0:7051
+        --rpc_advertised_addresses=kudu-tserver:7051
+    depends_on: [kudu-master]
+    networks: [datalake-network]
+
+  # 5. StarRocks FE
+  starrocks-fe:
+    image: starrocks/fe-ubuntu:latest
+    container_name: starrocks-fe
+    entrypoint: /opt/starrocks/fe/bin/start_fe.sh
+    ports: ["8030:8030", "9020:9020", "9030:9030"]
+    networks: [datalake-network]
+
+  # 6. StarRocks BE
+  starrocks-be:
+    image: starrocks/be-ubuntu:latest
+    container_name: starrocks-be
+    entrypoint: /opt/starrocks/be/bin/start_be.sh
+    ports: ["8040:8040", "9050:9050"]
+    ulimits:
+      memlock: -1
+      nproc: 65535
+      nofile: { soft: 65535, hard: 65535 }
+    depends_on: [starrocks-fe]
+    networks: [datalake-network]
+
+  # 7. Apache Spark
+  spark:
+    image: apache/spark:3.5.0
+    container_name: spark
+    user: root
+    ports: ["8080:8080", "7077:7077"]
+    entrypoint: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.master.Master"]
+    networks: [datalake-network]
+
+networks:
+  datalake-network:
+    driver: bridge
+
+volumes:
+  minio-data:
+  kudu-master-data:
+  kudu-tserver-data:
