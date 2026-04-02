@@ -118,3 +118,135 @@ root
 ```
 
 
+## iceberg catalog 구축
+
+## nessie 수정
+```
+  nessie:
+    image: ghcr.io/projectnessie/nessie:latest
+    container_name: nessie
+    ports: ["19120:19120"]
+    networks: [datalake-network]
+    depends_on:
+      minio: { condition: service_healthy }
+    environment:
+      - nessie.catalog.default-warehouse=warehouse
+      - nessie.catalog.warehouses.warehouse.location=s3://warehouse/
+      - nessie.catalog.service.s3.default-options.endpoint=http://minio:9000/
+      - nessie.catalog.service.s3.default-options.path-style-access=true
+      - nessie.catalog.service.s3.default-options.region=us-east-1
+      - nessie.catalog.service.s3.default-options.auth-type=STATIC
+      - nessie.catalog.service.s3.default-options.access-key=urn:nessie-secret:quarkus:nessie.catalog.secrets.access-key
+      - nessie.catalog.secrets.access-key.name=minioadmin
+      - nessie.catalog.secrets.access-key.secret=minioadmin
+      - nessie.server.authentication.enabled=false
+```
+
+-- docker container 재시작
+```
+docker compose up -d --force-recreate nessie
+## 확인
+curl -v http://localhost:19120/iceberg/v1/config
+* Host localhost:19120 was resolved.
+* IPv6: ::1
+* IPv4: 127.0.0.1
+*   Trying [::1]:19120...
+* Connected to localhost (::1) port 19120
+> GET /iceberg/v1/config HTTP/1.1
+> Host: localhost:19120
+> User-Agent: curl/8.5.0
+> Accept: */*
+>
+< HTTP/1.1 200 OK
+< content-length: 1728
+< Content-Type: application/json;charset=UTF-8
+<
+{
+  "defaults" : {
+    "rest-metrics-reporting-enabled" : "false",
+    "warehouse" : "s3://warehouse",
+    "rest-page-size" : "200",
+    "prefix" : "main"
+  },
+  "overrides" : {
+    "nessie.core-base-uri" : "http://localhost:19120/api/",
+    "nessie.catalog-base-uri" : "http://localhost:19120/catalog/v1/",
+    "nessie.iceberg-base-uri" : "http://localhost:19120/iceberg/",
+    "uri" : "http://localhost:19120/iceberg/",
+    "nessie.is-nessie-catalog" : "true",
+    "nessie.prefix-pattern" : "{ref}|{warehouse}",
+    "nessie.default-branch.name" : "main"
+  },
+  "endpoints" : [ "GET /v1/{prefix}/namespaces", "GET /v1/{prefix}/namespaces/{namespace}", "HEAD /v1/{prefix}/namespaces/{namespace}", "POST /v1/{prefix}/namespaces", "POST /v1/{prefix}/namespaces/{namespace}/properties", "DELETE /v1/{prefix}/namespaces/{namespace}", "POST /v1/{prefix}/transactions/commit", "GET /v1/{prefix}/namespaces/{namespace}/tables", "GET /v1/{prefix}/namespaces/{namespace}/tables/{table}", "HEAD /v1/{prefix}/namespaces/{namespace}/tables/{table}", "POST /v1/{prefix}/namespaces/{namespace}/tables", "POST /v1/{prefix}/namespaces/{namespace}/tables/{table}", "DELETE /v1/{prefix}/namespaces/{namespace}/tables/{table}", "POST /v1/{prefix}/tables/rename", "POST /v1/{prefix}/namespaces/{namespace}/register", "POST /v1/{prefix}/namespaces/{namespace}/tables/{table}/metrics", "GET /v1/{prefix}/namespaces/{namespace}/views", "GET /v1/{prefix}/namespaces/{namespace}/views/{view}", "HEAD /v1/{prefix}/namespaces/{namespace}/views/{view}", "POST /v1/{prefix}/namespaces/{namespace}/views", "POST /v1/{prefix}/namespaces/{namespace}/views/{view}", "DELETE /v1/{prefix}/namespaces/{namespace}/views/{view}", "POST /v1/{prefix}/views/rename" ]
+* Connection #0 to host localhost left intact
+```
+
+1. minio bucket 생성
+![img_1.png](img_1.png)
+2. starrocks -> iceberg catalog 연결
+```
+
+-- 1. 고장 난 카탈로그 버리기
+DROP CATALOG IF EXISTS iceberg_catalog;
+
+-- 2. 새로운 API 주소로 다시 만들기
+CREATE EXTERNAL CATALOG iceberg_catalog
+PROPERTIES (
+    "type" = "iceberg",
+    "iceberg.catalog.type" = "rest",
+    -- ✨ 핵심 변경: API 경로를 /api/v1/iceberg/ 로 변경!
+    "iceberg.catalog.uri" = "http://nessie:19120/iceberg/", 
+    "iceberg.catalog.warehouse" = "s3://warehouse/",
+    
+    "aws.s3.endpoint" = "http://minio:9000",
+    "aws.s3.access_key" = "minioadmin",
+    "aws.s3.secret_key" = "minioadmin",
+    "aws.s3.enable_path_style_access" = "true"
+);
+
+
+```
+![img_2.png](img_2.png)
+
+```
+
+-- 1. 등록된 카탈로그 목록 보기
+SHOW CATALOGS;
+
+-- 2. 지금부터 이 Iceberg 카탈로그를 기본으로 사용하겠다고 선언!
+SET CATALOG iceberg_catalog;
+
+-- 3. 이 카탈로그(Nessie) 안에 데이터베이스가 있는지 확인
+SHOW DATABASES;
+```
+
+-- ice berg 데이터 적재 확인
+```commandline
+
+CREATE DATABASE iceberg_catalog.test_db;
+USE iceberg_catalog.test_db;
+
+CREATE TABLE sample (
+    id INT,
+    name STRING,
+    created_at DATETIME
+);
+
+INSERT INTO sample VALUES (1, 'hello', now());
+
+INSERT INTO sample VALUES 
+(2, 'test2', now()),
+(3, 'test3', now()),
+(4, 'test4', now()),
+(5, 'test5', now());
+
+
+SELECT * FROM sample;
+
+```
+
+![img_3.png](img_3.png)
+
+-- minio 확인
+
+![img_4.png](img_4.png)
