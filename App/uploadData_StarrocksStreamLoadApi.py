@@ -12,7 +12,7 @@ def stream_load_to_starrocks(file_path):
     # StarRocks API 주소 (데이터베이스: herb24, 테이블: detection_logs)
     ## TODO 원래는 FE 주소로 보내지만
     ## 지금은 BE 로
-    url = "http://127.0.0.1:8040/api/herb24/detection_logs/_stream_load"
+    url = "http://localhost:8040/api/herb24/detection_logs/_stream_load"
 
     # Stream Load 설정 헤더
     headers = {
@@ -57,7 +57,7 @@ if __name__ == "__main__":
     # script_dir = os.path.dirname(os.path.abspath(__file__))
     #
     # print(script_dir)
-    script_dir = Path(__file__).resolve().parent
+    script_dir = Path(__file__).resolve().parent.parent
     csv_filename = script_dir / "herb24_100k_data.csv"
 
     stream_load_to_starrocks(csv_filename)

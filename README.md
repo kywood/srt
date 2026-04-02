@@ -61,5 +61,60 @@ PROPERTIES(
 
 
 
+## Spark - Starrocks 데이터 적재
+```
+(venv) oracle@DESKTOP-GLHA97V:~/project/project_f/mvp/starrocks_test/srt/App$ python load_data_with_spark.py 
+🚀 1. Spark Session 초기화 및 StarRocks 커넥터 다운로드 중...
+26/04/02 23:14:42 WARN Utils: Your hostname, DESKTOP-GLHA97V resolves to a loopback address: 127.0.1.1; using 10.255.255.254 instead (on interface lo)
+26/04/02 23:14:42 WARN Utils: Set SPARK_LOCAL_IP if you need to bind to another address
+:: loading settings :: url = jar:file:/mnt/f/project/mvp/starrocks_test/srt/venv/lib/python3.10/site-packages/pyspark/jars/ivy-2.5.1.jar!/org/apache/ivy/core/settings/ivysettings.xml
+Ivy Default Cache set to: /home/oracle/.ivy2/cache
+The jars for the packages stored in: /home/oracle/.ivy2/jars
+com.starrocks#starrocks-spark-connector-3.5_2.12 added as a dependency
+mysql#mysql-connector-java added as a dependency
+:: resolving dependencies :: org.apache.spark#spark-submit-parent-10944287-e501-4842-a501-f0289c9aa580;1.0
+        confs: [default]
+        found com.starrocks#starrocks-spark-connector-3.5_2.12;1.1.2 in central
+mysql#mysql-connector-java;8.0.33 is relocated to com.mysql#mysql-connector-j;8.0.33. Please update your dependencies.
+        found mysql#mysql-connector-java;8.0.33 in central
+        found com.mysql#mysql-connector-j;8.0.33 in central
+        found com.google.protobuf#protobuf-java;3.21.9 in central
+downloading https://repo1.maven.org/maven2/com/mysql/mysql-connector-j/8.0.33/mysql-connector-j-8.0.33.jar ...
+        [SUCCESSFUL ] com.mysql#mysql-connector-j;8.0.33!mysql-connector-j.jar (129ms)
+downloading https://repo1.maven.org/maven2/com/google/protobuf/protobuf-java/3.21.9/protobuf-java-3.21.9.jar ...
+        [SUCCESSFUL ] com.google.protobuf#protobuf-java;3.21.9!protobuf-java.jar(bundle) (105ms)
+:: resolution report :: resolve 1793ms :: artifacts dl 238ms
+        :: modules in use:
+        com.google.protobuf#protobuf-java;3.21.9 from central in [default]
+        com.mysql#mysql-connector-j;8.0.33 from central in [default]
+        com.starrocks#starrocks-spark-connector-3.5_2.12;1.1.2 from central in [default]
+        mysql#mysql-connector-java;8.0.33 from central in [default]
+        ---------------------------------------------------------------------
+        |                  |            modules            ||   artifacts   |
+        |       conf       | number| search|dwnlded|evicted|| number|dwnlded|
+        ---------------------------------------------------------------------
+        |      default     |   4   |   3   |   3   |   0   ||   3   |   2   |
+        ---------------------------------------------------------------------
+:: retrieving :: org.apache.spark#spark-submit-parent-10944287-e501-4842-a501-f0289c9aa580
+        confs: [default]
+        2 artifacts copied, 1 already retrieved (4055kB/12ms)
+26/04/02 23:14:45 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+Setting default log level to "WARN".
+To adjust logging level use sc.setLogLevel(newLevel). For SparkR, use setLogLevel(newLevel).
+📦 2. CSV 데이터 읽어오기: /mnt/f/project/mvp/starrocks_test/srt/herb24_100k_data.csv
+root
+ |-- detect_id: string (nullable = true)
+ |-- user_id: integer (nullable = true)
+ |-- herb_name: string (nullable = true)
+ |-- confidence: double (nullable = true)
+ |-- latitude: double (nullable = true)
+ |-- longitude: double (nullable = true)
+ |-- device_os: string (nullable = true)
+ |-- detect_time: timestamp (nullable = true)
+
+⚡ 3. StarRocks로 병렬 분산 적재 시작...
+✅ Spark를 통한 StarRocks 대용량 적재 완료!
+(venv) oracle@DESKTOP-GLHA97V:~/project/project_f/mvp/starrocks_test/srt/App$ 
+```
 
 

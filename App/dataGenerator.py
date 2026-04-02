@@ -54,4 +54,5 @@ def generate_herb_data(filename, num_rows=100000):
 
 if __name__ == "__main__":
     # 원하는 파일명과 건수를 입력하세요. (기본 10만 건)
-    generate_herb_data("herb24_100k_data.csv", 100000)
+    generate_herb_data("../herb24_100k_data.csv", 100000)
+    # generate_herb_data("../herb24_100k_data.csv", 100)
