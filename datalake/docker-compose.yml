@@ -21,6 +21,8 @@ services:
     image: ghcr.io/projectnessie/nessie:latest
     container_name: nessie
     ports: ["19120:19120"]
+    volumes:
+      - nessie-data:/home/nessie/data
     networks: [datalake-network]
     depends_on:
       minio: { condition: service_healthy }
@@ -80,7 +82,15 @@ services:
     container_name: starrocks-fe
     entrypoint: /opt/starrocks/fe/bin/start_fe.sh
     ports: ["8030:8030", "9020:9020", "9030:9030"]
+    volumes:
+      - starrocks-fe-meta:/opt/starrocks/fe/meta
     networks: [datalake-network]
+    healthcheck:
+      test: ["CMD-SHELL", "mysql -h127.0.0.1 -P9030 -uroot -e 'SHOW FRONTENDS' 2>/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
 
   # 6. StarRocks BE
   starrocks-be:
@@ -88,12 +98,53 @@ services:
     container_name: starrocks-be
     entrypoint: /opt/starrocks/be/bin/start_be.sh
     ports: ["8040:8040", "9050:9050"]
+    volumes:
+      - starrocks-be-storage:/opt/starrocks/be/storage
     ulimits:
       memlock: -1
       nproc: 65535
       nofile: { soft: 65535, hard: 65535 }
-    depends_on: [starrocks-fe]
+    depends_on:
+      starrocks-fe: { condition: service_healthy }
     networks: [datalake-network]
+
+  # 6-1. StarRocks BE 자동 등록 (init 컨테이너)
+  starrocks-init:
+    image: starrocks/fe-ubuntu:latest
+    container_name: starrocks-init
+    depends_on:
+      starrocks-fe: { condition: service_healthy }
+      starrocks-be: { condition: service_started }
+    networks: [datalake-network]
+    restart: "no"
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        echo "Waiting for BE to be ready..."
+        sleep 10
+        
+        # BE가 이미 등록되어 있는지 확인
+        EXISTING=$$(mysql -h starrocks-fe -P 9030 -u root -N -e "SHOW BACKENDS" 2>/dev/null | grep -c "starrocks-be")
+        
+        if [ "$$EXISTING" -gt 0 ]; then
+          echo "BE already registered, skipping."
+        else
+          echo "Registering BE..."
+          mysql -h starrocks-fe -P 9030 -u root -e "ALTER SYSTEM ADD BACKEND 'starrocks-be:9050';"
+          echo "BE registered successfully."
+        fi
+        
+        # BE가 Alive 될 때까지 대기
+        for i in $$(seq 1 30); do
+          ALIVE=$$(mysql -h starrocks-fe -P 9030 -u root -N -e "SHOW BACKENDS" 2>/dev/null | grep -c "true")
+          if [ "$$ALIVE" -gt 0 ]; then
+            echo "BE is alive!"
+            exit 0
+          fi
+          echo "Waiting for BE to become alive... ($$i/30)"
+          sleep 3
+        done
+        echo "WARNING: BE did not become alive within timeout"
 
   # 7. Apache Spark
   spark:
@@ -104,6 +155,37 @@ services:
     entrypoint: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.master.Master"]
     networks: [datalake-network]
 
+# 7-1. Spark Connect Server
+  spark-connect:
+    image: apache/spark:3.5.0
+    container_name: spark-connect
+    user: root
+    ports:
+      - "15002:15002"
+    volumes:
+      # 1. Jar 파일 캐싱: 패키지 재다운로드 방지 (속도 향상)
+      - spark-ivy-cache:/root/.ivy2
+      # 2. 데이터 공유: 로컬의 CSV 파일 등을 컨테이너 내에서 참조할 경우
+      - ./data:/opt/spark/data
+    environment:
+      - SPARK_NO_DAEMONIZE=true
+    networks: [datalake-network]
+    command: >
+      /opt/spark/sbin/start-connect-server.sh
+      --packages org.apache.spark:spark-connect_2.12:3.5.0,org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.5.0,org.apache.iceberg:iceberg-aws-bundle:1.5.0
+      --conf spark.jars.repositories=https://repo1.maven.org/maven2
+      --conf spark.jars.packages=org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.5.0,org.apache.iceberg:iceberg-aws-bundle:1.5.0
+      --conf spark.sql.catalog.nessie=org.apache.iceberg.spark.SparkCatalog
+      --conf spark.sql.catalog.nessie.type=rest
+      --conf spark.sql.catalog.nessie.uri=http://nessie:19120/iceberg/
+      --conf spark.sql.catalog.nessie.warehouse=warehouse
+      --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions
+      --conf spark.hadoop.fs.s3a.endpoint=http://minio:9000
+      --conf spark.hadoop.fs.s3a.access.key=minioadmin
+      --conf spark.hadoop.fs.s3a.secret.key=minioadmin
+      --conf spark.hadoop.fs.s3a.path.style.access=true
+      --conf spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem
+
 networks:
   datalake-network:
     driver: bridge
@@ -112,3 +194,7 @@ volumes:
   minio-data:
   kudu-master-data:
   kudu-tserver-data:
+  starrocks-fe-meta:
+  starrocks-be-storage:
+  nessie-data:
+  spark-ivy-cache: # 추가됨

@@ -324,7 +324,7 @@ root
 
 -- dbBear 에서 확인
 ```commandline
-SHOW DATABASES;
+SHOW DATABASES
 
 use test_db
 
@@ -333,3 +333,87 @@ show tables
 select * from detection_logs
 ```
 ![img_5.png](img_5.png)
+
+
+## spark-connect
+
+```commandline
+(venv_win) PS F:\project\mvp\starrocks_test\srt> pip install --index-url https://pypi.org/simple pandas pyarrow "pyspark[connect]==3.5.0"
+Collecting pandas
+  Downloading pandas-2.3.3-cp310-cp310-win_amd64.whl.metadata (19 kB)
+Collecting pyarrow
+  Downloading pyarrow-23.0.1-cp310-cp310-win_amd64.whl.metadata (3.1 kB)
+Requirement already satisfied: pyspark==3.5.0 in .\venv_win\lib\site-packages (from pyspark[connect]==3.5.0) (3.5.0)
+Requirement already satisfied: py4j==0.10.9.7 in .\venv_win\lib\site-packages (from pyspark==3.5.0->pyspark[connect]==3.5.0) (0.10.9.7)
+Collecting grpcio>=1.56.0 (from pyspark[connect]==3.5.0)
+  Downloading grpcio-1.80.0-cp310-cp310-win_amd64.whl.metadata (3.9 kB)
+Collecting grpcio-status>=1.56.0 (from pyspark[connect]==3.5.0)
+  Downloading grpcio_status-1.80.0-py3-none-any.whl.metadata (1.3 kB)
+Collecting googleapis-common-protos>=1.56.4 (from pyspark[connect]==3.5.0)
+  Downloading googleapis_common_protos-1.74.0-py3-none-any.whl.metadata (9.2 kB)
+Collecting numpy>=1.15 (from pyspark[connect]==3.5.0)
+  Downloading numpy-2.2.6-cp310-cp310-win_amd64.whl.metadata (60 kB)
+Collecting python-dateutil>=2.8.2 (from pandas)
+  Using cached python_dateutil-2.9.0.post0-py2.py3-none-any.whl.metadata (8.4 kB)
+Collecting pytz>=2020.1 (from pandas)
+  Downloading pytz-2026.1.post1-py2.py3-none-any.whl.metadata (22 kB)
+Collecting tzdata>=2022.7 (from pandas)
+  Downloading tzdata-2026.1-py2.py3-none-any.whl.metadata (1.4 kB)
+Collecting protobuf<8.0.0,>=4.25.8 (from googleapis-common-protos>=1.56.4->pyspark[connect]==3.5.0)
+  Downloading protobuf-7.34.1-cp310-abi3-win_amd64.whl.metadata (595 bytes)
+Collecting typing-extensions~=4.12 (from grpcio>=1.56.0->pyspark[connect]==3.5.0)
+  Using cached typing_extensions-4.15.0-py3-none-any.whl.metadata (3.3 kB)
+Collecting protobuf<8.0.0,>=4.25.8 (from googleapis-common-protos>=1.56.4->pyspark[connect]==3.5.0)
+  Downloading protobuf-6.33.6-cp310-abi3-win_amd64.whl.metadata (593 bytes)
+Collecting six>=1.5 (from python-dateutil>=2.8.2->pandas)
+  Using cached six-1.17.0-py2.py3-none-any.whl.metadata (1.7 kB)
+Downloading pandas-2.3.3-cp310-cp310-win_amd64.whl (11.3 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 11.3/11.3 MB 64.4 MB/s  0:00:00
+Downloading pyarrow-23.0.1-cp310-cp310-win_amd64.whl (27.5 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 27.5/27.5 MB 41.6 MB/s  0:00:00
+Downloading googleapis_common_protos-1.74.0-py3-none-any.whl (300 kB)
+Downloading grpcio-1.80.0-cp310-cp310-win_amd64.whl (4.9 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.9/4.9 MB 59.3 MB/s  0:00:00
+Using cached typing_extensions-4.15.0-py3-none-any.whl (44 kB)
+Downloading grpcio_status-1.80.0-py3-none-any.whl (14 kB)
+Downloading protobuf-6.33.6-cp310-abi3-win_amd64.whl (437 kB)
+Downloading numpy-2.2.6-cp310-cp310-win_amd64.whl (12.9 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 12.9/12.9 MB 15.0 MB/s  0:00:00
+Using cached python_dateutil-2.9.0.post0-py2.py3-none-any.whl (229 kB)
+Downloading pytz-2026.1.post1-py2.py3-none-any.whl (510 kB)
+Using cached six-1.17.0-py2.py3-none-any.whl (11 kB)
+Downloading tzdata-2026.1-py2.py3-none-any.whl (348 kB)
+Installing collected packages: pytz, tzdata, typing-extensions, six, pyarrow, protobuf, numpy, python-dateutil, grpcio, googleapis-common-protos, pandas, grpcio-status
+Successfully installed googleapis-common-protos-1.74.0 grpcio-1.80.0 grpcio-status-1.80.0 numpy-2.2.6 pandas-2.3.3 protobuf-6.33.6 pyarrow-23.0.1 python-dateutil-2.9.0.post0 pytz-2026.1.post1 six-1.17.0 typing-extensions-4.15.0 tzdata-2026.1
+(venv_win) PS F:\project\mvp\starrocks_test\srt> 
+```
+
+
+```commandline
+(venv) oracle@DESKTOP-GLHA97V:~/project/project_f/mvp/starrocks_test/srt$ python App/load_to_iceberg_connect.py
+🌐 1. Spark Connect Server 연결 중 (sc://localhost:15002)...
+🐼 2. Pandas로 데이터 읽기: herb24_100k_data.csv
+🚀 3. Pandas DF -> Spark DF 변환 및 전송 (건수: 100000)
+⚡ 4. Iceberg 테이블 적재 시작 (nessie.test_db.detection_logs)...
+✅ 5. 적재 데이터 검증 (Spark SQL)
++------+
+| total|
++------+
+|100000|
++------+
+
++------------------------------------+-------+---------+----------+---------+----------+---------+-------------------+
+|detect_id                           |user_id|herb_name|confidence|latitude |longitude |device_os|detect_time        |
++------------------------------------+-------+---------+----------+---------+----------+---------+-------------------+
+|c1a092af-e3ce-4f72-ba93-c5609a14af8d|1017   |도라지   |0.9402    |37.062741|127.671424|Android  |2025-07-20 22:11:02|
+|5d16ab5c-d272-4afb-a4e3-677e74d943a6|1581   |인삼     |0.8118    |33.814962|128.111552|Android  |2025-10-17 05:58:31|
+|371c68a8-ce61-4124-b9ce-0712456fb404|9984   |천남성   |0.6735    |36.805186|130.711549|Android  |2025-05-27 05:38:15|
+|c7349ef4-e139-4d09-887b-8f4e07994018|8667   |하수오   |0.893     |35.071697|127.554925|Android  |2025-03-28 20:36:00|
+|451f3141-8778-42dd-b00b-755ff0c9c63c|5922   |천마     |0.588     |36.608199|127.756525|Android  |2025-07-02 16:08:33|
++------------------------------------+-------+---------+----------+---------+----------+---------+-------------------+
+
+🎉 Iceberg 적재 완료!
+StarRocks 조회 확인:
+  SELECT * FROM iceberg_catalog.test_db.detection_logs LIMIT 10;
+(venv) oracle@DESKTOP-GLHA97V:~/project/project_f/mvp/starrocks_test/srt$
+```
