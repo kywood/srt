@@ -84,6 +84,8 @@ services:
     ports: ["8030:8030", "9020:9020", "9030:9030"]
     volumes:
       - starrocks-fe-meta:/opt/starrocks/fe/meta
+    environment: # ✨ 여기에 네트워크 대역 설정을 추가합니다!
+      - priority_networks=172.18.0.0/16
     networks: [datalake-network]
     healthcheck:
       test: ["CMD-SHELL", "mysql -h127.0.0.1 -P9030 -uroot -e 'SHOW FRONTENDS' 2>/dev/null || exit 1"]
@@ -100,6 +102,8 @@ services:
     ports: ["8040:8040", "9050:9050"]
     volumes:
       - starrocks-be-storage:/opt/starrocks/be/storage
+    environment: # ✨ BE에도 동일하게 추가합니다!
+      - priority_networks=172.18.0.0/16
     ulimits:
       memlock: -1
       nproc: 65535
