@@ -1,18 +1,33 @@
 import pandas as pd
 import numpy as np
 import time
-from pyspark.sql.connect.session import SparkSession
+
 
 # 1. Spark Connect 세션 연결
 # 컨테이너 포트 15002가 spark-connect 포트입니다.
+from pyspark.sql.connect.session import SparkSession
 # spark = SparkSession.builder.remote("sc://localhost:15002").get_session()
-spark = SparkSession.builder.remote("sc://localhost:15002").getOrCreate()
+spark = SparkSession.builder.remote("sc://server.pc:15002").getOrCreate()
+
+## 실험 결과
+## sp-conn  On server : Pnadas DF 0.15 createDataFrame : 0.11 count : 4.29
+## sp-conn  On remote : Pnadas DF 0.27 createDataFrame : 0.15 count : 21.96
+## sp       On local  : Pnadas DF 0.25 createDataFrame : 2.06 count : 4.21
+
+#
+# from pyspark.sql import SparkSession
+# spark = SparkSession.builder.appName("aa") \
+#     .config("spark.driver.memory", "8g") \
+#     .config("spark.executor.memory", "8g") \
+#     .config("spark.sql.execution.arrow.pyspark.enabled", "true") \
+#     .config("spark.sql.execution.arrow.pyspark.fallback.enabled", "true") \
+#     .getOrCreate()
 
 print("--- 데이터 생성 시작 (50만 건) ---")
 start_time = time.time()
 
 # 2. 15개 컬럼을 가진 샘플 데이터 생성
-num_rows = 500_000
+num_rows = 300_000
 data = {
     "id": np.arange(num_rows),
     "name": [f"user_{i}" for i in range(num_rows)],
