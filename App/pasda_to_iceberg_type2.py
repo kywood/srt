@@ -4,6 +4,8 @@ import numpy as np
 import uuid
 import time
 
+from App.create_data_spark_connect import start_time
+
 print("🚀 Spark Connect 서버에 연결 중...")
 spark = SparkSession.builder.remote("sc://localhost:15002").getOrCreate()
 print("✅ 연결 성공!\n")
@@ -54,7 +56,14 @@ print(f"✅ Pandas 데이터 50만 건 생성 완료! (소요 시간: {pandas_ge
 # 3. 데이터 적재 (불러온 스키마 적용)
 print("🔄 동적 스키마를 적용하여 Iceberg 테이블에 적재합니다...")
 # 사람이 짠 StructType 대신, 카탈로그에서 읽어온 table_schema를 그대로 입힙니다!
+
+start_time = time.time()
 spark_df = spark.createDataFrame(pdf, schema=table_schema)
+end_time = time.time()
+
+es_time =  (end_time - start_time)
+
+print(f" es_time : {es_time}")
 
 # 기존 테이블에 밀어 넣기
 spark_df.writeTo(table_name).append()

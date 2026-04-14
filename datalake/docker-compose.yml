@@ -84,6 +84,7 @@ services:
     ports: ["8030:8030", "9020:9020", "9030:9030"]
     volumes:
       - starrocks-fe-meta:/opt/starrocks/fe/meta
+      - ./fe.conf:/opt/starrocks/fe/conf/fe.conf
     environment: # ✨ 여기에 네트워크 대역 설정을 추가합니다!
       - priority_networks=172.18.0.0/16
     networks: [datalake-network]
