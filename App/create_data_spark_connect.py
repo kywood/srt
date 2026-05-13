@@ -1,8 +1,10 @@
 from pyspark.sql import SparkSession
 import time
 
+## wsl 주소 : http://172.22.156.174/
+
 print("🚀 Spark Connect 서버에 연결 중...")
-spark = SparkSession.builder.remote("sc://localhost:15002").getOrCreate()
+spark = SparkSession.builder.remote("sc://172.22.156.174:15002").getOrCreate()
 print("✅ 연결 성공!\n")
 
 # 1. 네임스페이스 및 테이블 생성 (기존과 동일)
